@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ResQVision — Control Room</title>
+<meta name="description" content="ResQVision automated accident detection control room dashboard.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<!-- ============================================================ TOPBAR -->
+<header class="topbar">
+  <div class="brand">
+    <svg class="brand-logo" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M16 2L4 7v9c0 6.627 5.144 12.275 12 13.941C22.856 28.275 28 22.627 28 16V7L16 2z" fill="rgba(0,217,126,0.12)" stroke="#00d97e" stroke-width="1.5"/>
+      <circle cx="16" cy="15" r="5" fill="none" stroke="#00d97e" stroke-width="1.5"/>
+      <path d="M16 10 L16 7M16 23 L16 20M10 15 L7 15M25 15 L22 15" stroke="#00d97e" stroke-width="1.2" stroke-linecap="round"/>
+      <circle cx="16" cy="15" r="2" fill="#00d97e"/>
+    </svg>
+    <div class="brand-text">
+      <span class="brand-name">ResQVision</span>
+      <span class="brand-sub">Autonomous Detection System</span>
+    </div>
+  </div>
+
+  <div class="topbar-center">
+    <span id="live-clock" class="live-clock">--:--:--</span>
+    <span id="live-date" class="live-date">---</span>
+  </div>
+
+  <div class="topbar-right">
+    <div class="status-group">
+      <span id="status-dot" class="status-dot ok"></span>
+      <span id="status-message" class="status-msg">Connecting…</span>
+    </div>
+    <div class="fps-badge" id="fps-readout">-- fps</div>
+  </div>
+</header>
+
+<!-- ============================================================ TABS -->
+<nav class="tabs" role="tablist">
+  <button id="tab-btn-monitor"  class="tab-btn active" data-tab="monitor"  role="tab" aria-selected="true">
+    <svg viewBox="0 0 20 20" fill="currentColor"><rect x="2" y="3" width="16" height="11" rx="2"/><path d="M7 17h6M10 14v3"/></svg>
+    Live Monitor
+  </button>
+  <button id="tab-btn-history"  class="tab-btn" data-tab="history"  role="tab" aria-selected="false">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M4 5h12M4 9h8M4 13h10"/></svg>
+    Alert History
+  </button>
+  <button id="tab-btn-settings" class="tab-btn" data-tab="settings" role="tab" aria-selected="false">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M8.5 2h3l.5 2a6 6 0 011.7.98l1.9-.78 2.12 2.12-.78 1.9A6 6 0 0118 10v.5l-1.5.5a6 6 0 01-.98 1.7l.78 1.9-2.12 2.12-1.9-.78A6 6 0 0110 17h-.5l-.5-1.5a6 6 0 01-1.7-.98l-1.9.78L3.28 13.18l.78-1.9A6 6 0 013 10v-.5l1.5-.5A6 6 0 015.48 7.3l-.78-1.9L6.82 3.28l1.9.78A6 6 0 018.5 4V2zM10 7a3 3 0 100 6 3 3 0 000-6z"/></svg>
+    Settings
+  </button>
+</nav>
+
+<!-- ============================================================ TOAST CONTAINER -->
+<div id="toast-container" aria-live="polite"></div>
+
+<main>
+
+<!-- ========================= LIVE MONITOR ========================= -->
+<section id="tab-monitor" class="tab-panel active" role="tabpanel">
+  <div class="monitor-layout">
+
+    <div class="feed-col">
+      <div class="feed-card">
+        <div class="feed-header">
+          <div class="feed-header-left">
+            <span class="feed-cam-dot"></span>
+            <span id="camera-id-label" class="feed-cam-id">CAM-1</span>
+          </div>
+          <div class="feed-header-right">
+            <span class="live-pill">● LIVE</span>
+            <span id="feed-fps" class="feed-fps-label">-- fps</span>
+          </div>
+        </div>
+        <div class="feed-frame" id="feed-frame-box">
+          <div class="hud-corner tl"></div>
+          <div class="hud-corner tr"></div>
+          <div class="hud-corner bl"></div>
+          <div class="hud-corner br"></div>
+          <div class="scanlines"></div>
+          <img id="video-feed" src="/video_feed" alt="Live detection feed">
+          <div id="feed-overlay-msg" class="feed-overlay-msg" hidden>
+            <div class="feed-overlay-icon">⏸</div>
+            <div>Restarting stream…</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats bar -->
+      <div class="stats-bar">
+        <div class="stat-item">
+          <span class="stat-label">State</span>
+          <span id="detail-state" class="stat-value">—</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <span class="stat-label">Today's Alerts</span>
+          <span id="detail-today" class="stat-value">—</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <span class="stat-label">Uptime</span>
+          <span id="detail-uptime" class="stat-value">—</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col">
+      <div class="card">
+        <h3 class="card-title">System Status</h3>
+        <div class="kv-list">
+          <div class="kv-row"><span class="kv-key">Engine</span><span id="kv-engine" class="kv-val">—</span></div>
+          <div class="kv-row"><span class="kv-key">FPS</span><span id="kv-fps" class="kv-val">—</span></div>
+          <div class="kv-row"><span class="kv-key">Alerts Today</span><span id="kv-today" class="kv-val">—</span></div>
+        </div>
+      </div>
+
+      <div class="card card-alert">
+        <h3 class="card-title">Autonomous Alerting Active</h3>
+        <p class="card-note">
+          This system operates without a human-in-the-loop. Confirmed accidents exceeding the threshold trigger immediate automatic dispatch to emergency contacts.
+        </p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ========================= HISTORY ========================= -->
+<section id="tab-history" class="tab-panel" role="tabpanel">
+  <div class="panel-header">
+    <h2>Automated Alert History</h2>
+    <p class="panel-note">Complete log of all past incidents and autonomous alert outcomes.</p>
+  </div>
+  
+  <div class="history-wrap">
+    <table class="history-table" id="history-table">
+      <thead>
+        <tr>
+          <th>Snapshot</th>
+          <th>Timestamp</th>
+          <th>Camera</th>
+          <th>Confidence</th>
+          <th>GPS</th>
+          <th>Dispatch Status</th>
+        </tr>
+      </thead>
+      <tbody id="history-body"></tbody>
+    </table>
+    <div id="history-empty" class="empty-state" hidden>
+      <div class="empty-icon">📋</div>
+      <div>No incidents logged yet.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================= SETTINGS ========================= -->
+<section id="tab-settings" class="tab-panel" role="tabpanel">
+  <div class="panel-header">
+    <h2>Settings</h2>
+    <p class="panel-note">Changes apply immediately and restart the detection loop.</p>
+  </div>
+
+  <form id="settings-form" autocomplete="off">
+
+    <!-- ---- Video Source ---- -->
+    <div class="settings-section">
+      <div class="settings-section-label">
+        <span class="settings-section-icon">📹</span> Video Source
+      </div>
+      <div class="settings-cards">
+        <div class="card">
+          <h3 class="card-title">Camera / Feed</h3>
+
+          <label class="field-label">Camera label
+            <input type="text" id="s-camera-id" placeholder="CAM-1" class="field-input">
+          </label>
+
+          <div class="field-label">
+            <span>Source type</span>
+            <div class="source-type-group" id="source-type-group">
+              <label class="radio-pill"><input type="radio" name="src-type" value="webcam" checked> Webcam</label>
+              <label class="radio-pill"><input type="radio" name="src-type" value="file"> File Path</label>
+              <label class="radio-pill"><input type="radio" name="src-type" value="rtsp"> RTSP</label>
+              <label class="radio-pill"><input type="radio" name="src-type" value="http"> HTTP/HLS</label>
+            </div>
+          </div>
+
+          <label class="field-label">
+            <span id="source-label-text">Webcam index</span>
+            <input type="text" id="s-video-source" placeholder="0" class="field-input" spellcheck="false">
+          </label>
+
+          <label class="field-label">Model weights path
+            <input type="text" id="s-model-path" placeholder="models/best.pt" class="field-input" spellcheck="false">
+          </label>
+        </div>
+
+        <div class="card">
+          <h3 class="card-title">GPS Location</h3>
+          <p class="card-note" style="margin-bottom:14px;">Used to attach a Google Maps link to each incident alert.</p>
+          <div class="gps-row">
+            <label class="field-label">Latitude
+              <input type="number" id="s-gps-lat" placeholder="e.g. 19.0760" step="any" class="field-input">
+            </label>
+            <label class="field-label">Longitude
+              <input type="number" id="s-gps-lon" placeholder="e.g. 72.8777" step="any" class="field-input">
+            </label>
+          </div>
+          <div id="gps-preview" class="gps-preview" hidden>
+            <a id="gps-preview-link" href="#" target="_blank" rel="noopener">📍 Preview on Google Maps</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ---- Detection ---- -->
+    <div class="settings-section">
+      <div class="settings-section-label">
+        <span class="settings-section-icon">🎯</span> Detection Parameters
+      </div>
+      <div class="settings-cards">
+        <div class="card">
+          <h3 class="card-title">Thresholds</h3>
+
+          <label class="field-label">Confidence threshold
+            <div class="slider-row">
+              <input type="range" id="s-confidence" min="0.05" max="0.95" step="0.05" class="field-slider">
+              <span id="conf-readout" class="slider-readout">0.50</span>
+            </div>
+          </label>
+
+          <label class="field-label">Min box size (% of frame)
+            <div class="slider-row">
+              <input type="range" id="s-min-box-area" min="0" max="0.20" step="0.005" class="field-slider">
+              <span id="box-area-readout" class="slider-readout">2%</span>
+            </div>
+          </label>
+
+          <label class="field-label">Consecutive frames required before flagging
+            <input type="number" id="s-frames-required" min="1" step="1" class="field-input field-input-sm">
+          </label>
+
+          <label class="field-label">Cooldown between incidents (seconds)
+            <input type="number" id="s-cooldown" min="0" step="1" class="field-input field-input-sm">
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- ---- Alert / SMTP ---- -->
+    <div class="settings-section">
+      <div class="settings-section-label">
+        <span class="settings-section-icon">📧</span> Alert Configuration (SMTP)
+      </div>
+      <div class="settings-cards">
+        <div class="card">
+          <h3 class="card-title">Outgoing Email (SMTP)</h3>
+          <p class="card-note" style="margin-bottom:14px;">
+            For Gmail: use <code>smtp.gmail.com</code> port <code>587</code> and an 
+            <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener" class="inline-link">App Password</a>.
+          </p>
+          <div class="smtp-grid">
+            <label class="field-label">SMTP Host
+              <input type="text" id="s-smtp-host" placeholder="smtp.gmail.com" class="field-input" spellcheck="false">
+            </label>
+            <label class="field-label">Port
+              <input type="number" id="s-smtp-port" placeholder="587" class="field-input field-input-sm">
+            </label>
+            <label class="field-label">Username / Email
+              <input type="email" id="s-smtp-user" placeholder="you@gmail.com" class="field-input" autocomplete="off">
+            </label>
+            <label class="field-label">Password / App Password
+              <input type="password" id="s-smtp-password" placeholder="Leave blank to keep existing" class="field-input" autocomplete="new-password">
+            </label>
+            <label class="field-label" style="grid-column:1/-1;">From address (optional, defaults to username)
+              <input type="email" id="s-smtp-from" placeholder="Same as username" class="field-input">
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ---- Emergency Contacts ---- -->
+    <div class="settings-section">
+      <div class="settings-section-label">
+        <span class="settings-section-icon">🆘</span> Emergency Contacts
+      </div>
+      <div class="card">
+        <div id="contacts-list"></div>
+        <button type="button" id="add-contact-btn" class="btn-secondary btn-sm">
+          + Add Contact
+        </button>
+        <div style="margin-top:16px;">
+          <button type="button" id="test-alert-btn" class="btn-test">
+            ⚡ Send Test Alert
+          </button>
+          <span class="field-note" style="margin-left:10px;">Sends to all contacts without a real incident.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ---- Save ---- -->
+    <div class="settings-footer">
+      <button type="submit" id="save-btn" class="btn-primary">Save Settings</button>
+      <div id="save-spinner" class="save-spinner" hidden>
+        <span class="spinner-dot"></span> Restarting detection…
+      </div>
+    </div>
+
+  </form>
+</section>
+
+</main>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
